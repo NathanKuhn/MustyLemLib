@@ -10,7 +10,7 @@ namespace lemlib {
  * @param sensors the sensors to be used
  * @param drivetrain drivetrain to be used
  */
-void setSensors(lemlib::OdomSensors sensors, lemlib::Drivetrain drivetrain);
+void setDrivetrain(lemlib::Drivetrain drivetrain);
 /**
  * @brief Get the pose of the robot
  *

@@ -337,14 +337,13 @@ class Chassis {
          * @param drivetrain drivetrain to be used for the chassis
          * @param lateralSettings settings for the lateral controller
          * @param angularSettings settings for the angular controller
-         * @param sensors sensors to be used for odometry
          * @param throttleCurve curve applied to throttle input during driver control
          * @param turnCurve curve applied to steer input during driver control
          *
          * @example main.cpp
          */
         Chassis(Drivetrain drivetrain, ControllerSettings linearSettings, ControllerSettings angularSettings,
-                OdomSensors sensors, DriveCurve* throttleCurve = &defaultDriveCurve,
+                DriveCurve* throttleCurve = &defaultDriveCurve,
                 DriveCurve* steerCurve = &defaultDriveCurve);
         /**
          * @brief Calibrate the chassis sensors. THis should be called in the initialize function
@@ -927,7 +926,6 @@ class Chassis {
         ControllerSettings lateralSettings;
         ControllerSettings angularSettings;
         Drivetrain drivetrain;
-        OdomSensors sensors;
         DriveCurve* throttleCurve;
         DriveCurve* steerCurve;
 
