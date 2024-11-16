@@ -1,5 +1,6 @@
 #include "main.h"
 #include "lemlib/api.hpp" // IWYU pragma: keep
+#include "lemlib/chassis/odom.hpp" // IWYU pragma: keep
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
@@ -9,6 +10,7 @@
  */
 void initialize() {
     pros::lcd::initialize(); // initialize brain screen
+    lemlib::init(); // initialize lemlib
 }
 
 /**
@@ -31,4 +33,6 @@ void autonomous() {}
 /**
  * Runs in driver control
  */
-void opcontrol() {}
+void opcontrol() {
+    pros::lcd::print(0, "Pose: (%f, %f, %f)", lemlib::getPose().x, lemlib::getPose().y, lemlib::getPose().theta);
+}

@@ -4,15 +4,25 @@
 // http://thepilons.ca/wp-content/uploads/2018/10/Tracking.pdf
 
 #include <math.h>
+#include <string.h>
 #include "pros/rtos.hpp"
 #include "pros/serial.hpp"
 #include "lemlib/util.hpp"
 #include "lemlib/chassis/odom.hpp"
 #include "lemlib/chassis/chassis.hpp"
 #include "lemlib/chassis/trackingWheel.hpp"
+#include "musty/cobs.h"
 
 #define MUSTY_SERIALPORT 2
 #define MUSTY_BAUDRATE 460800
+
+#define TRANSMIT_PACKET_SIZE 2
+#define MAX_BUFFER_SIZE 256
+#define RECEIVE_OTOS_PACKET_SIZE 21
+
+#define COMMAND_READ_LIDAR 200
+#define COMMAND_READ_ENCODERS 100
+#define COMMAND_READ_OTOS 201
 
 // tracking thread
 pros::Task* trackingTask = nullptr;
@@ -23,14 +33,6 @@ lemlib::Drivetrain drive(nullptr, nullptr, 0, 0, 0, 0); // the drivetrain to be 
 lemlib::Pose odomPose(0, 0, 0); // the pose of the robot
 lemlib::Pose odomSpeed(0, 0, 0); // the speed of the robot
 lemlib::Pose odomLocalSpeed(0, 0, 0); // the local speed of the robot
-
-float prevVertical = 0;
-float prevVertical1 = 0;
-float prevVertical2 = 0;
-float prevHorizontal = 0;
-float prevHorizontal1 = 0;
-float prevHorizontal2 = 0;
-float prevImu = 0;
 
 void lemlib::setDrivetrain(lemlib::Drivetrain drivetrain) { drive = drivetrain; }
 
@@ -74,7 +76,59 @@ lemlib::Pose lemlib::estimatePose(float time, bool radians) {
 }
 
 void lemlib::update() {
-    // TODO get values for position, rotation, and velocity using serial to communicate with the Musty board
+    uint8_t transmit_buffer[TRANSMIT_PACKET_SIZE] = {COMMAND_READ_OTOS, 255};
+    uint8_t receive_buffer[MAX_BUFFER_SIZE] = {0};
+    uint8_t decode_buffer[MAX_BUFFER_SIZE] = {0};
+
+    uint8_t* temp_buf_ptr = receive_buffer;
+    int num_read_bytes = 0;
+    int num_waiting_bytes = 0;
+    int timeout_counter = 0;
+    bool read_success = false;
+
+    cobs_decode_result res;
+
+    float x, y, h;
+
+    // send the command to the Musty board
+    s->write(transmit_buffer, TRANSMIT_PACKET_SIZE);
+
+    // read the data from the Musty board
+    while (true) {
+        num_waiting_bytes = s->get_read_avail();
+
+        if (num_waiting_bytes > 0) {
+            num_read_bytes = s->read(temp_buf_ptr, num_waiting_bytes);
+            temp_buf_ptr += num_read_bytes;
+        }
+
+        if (num_read_bytes == RECEIVE_OTOS_PACKET_SIZE) {
+            read_success = true;
+            break;
+
+        } else if (num_read_bytes > RECEIVE_OTOS_PACKET_SIZE) {
+            s->flush();
+            break;
+
+        } else {
+            timeout_counter++;
+            pros::delay(1);
+            if (timeout_counter > 10) { break; }
+        }
+
+    }
+
+    if (read_success) {
+        res = musty_cobs_decode(decode_buffer, MAX_BUFFER_SIZE, receive_buffer, RECEIVE_OTOS_PACKET_SIZE);
+
+        if (res.status == COBS_DECODE_OK) {
+            memcpy(&x, &decode_buffer[0], sizeof(float));
+            memcpy(&y, &decode_buffer[4], sizeof(float));
+            memcpy(&h, &decode_buffer[8], sizeof(float));
+
+            odomPose = lemlib::Pose(x, y, h);
+        }
+    }
 }
 
 void lemlib::init() {
